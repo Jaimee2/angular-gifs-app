@@ -16,10 +16,26 @@ export class GifsService {
   private limit: string = '10';
 
   constructor(private http: HttpClient) {
+    this.loadLocalStore();
   }
 
-  get tagsHistory() {
-    return [...this._tagsHistory]
+  addSearchTag(tag: string): void {
+    if (!tag) return;
+
+    const params = new HttpParams()
+      .set('api_key', this.GIPHY_API_KEY)
+      .set('limit', this.limit)
+      .set('q', tag)
+
+
+    this.http.get<SearchResponse>(`${this.serviceUrl}/search`, {params})
+      .subscribe(resp => {
+        this.gifsList = resp.data;
+        console.log(this.gifsList);
+      })
+
+    this.organizeHistory(tag);
+
   }
 
   private organizeHistory(tag: string) {
@@ -32,25 +48,28 @@ export class GifsService {
 
     this._tagsHistory.unshift(tag);
     this._tagsHistory = this.tagsHistory.splice(0, 10);
+
+    this.saveLocalStorage();
+
   }
 
-  addSearchTag(tag: string): void {
-    if (!tag) return;
+  get tagsHistory() {
+    return [...this._tagsHistory]
+  }
 
-    const params = new HttpParams()
-      .set('api_key', this.GIPHY_API_KEY)
-      .set('limit', this.limit)
-      .set('q', tag)
+  private saveLocalStorage(): void {
+    localStorage.setItem('history', JSON.stringify(this._tagsHistory));
+  }
 
+  private loadLocalStore(): void {
+    if (!localStorage.getItem('history')) {
+      return;
+    }
 
-    this.http.get<SearchResponse>(`${this.serviceUrl}/search`,{params})
-      .subscribe(resp => {
-        this.gifsList = resp.data;
-        console.log(this.gifsList);
-      })
+    this._tagsHistory = JSON.parse(localStorage.getItem('history')!);
 
-    this.organizeHistory(tag);
-
+    if(this._tagsHistory.length === 0) {return;}
+    this.addSearchTag(this._tagsHistory[0])
   }
 
 }
